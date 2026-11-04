@@ -1,0 +1,35 @@
+name: PowerShell lint
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  psscriptanalyzer:
+    name: PSScriptAnalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force -ErrorAction Stop
+
+      - name: Lint PowerShell scripts
+        shell: pwsh
+        run: |
+          Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -ErrorAction Stop
+          Invoke-ScriptAnalyzer -Path . -Recurse -OutVariable issues
+          $errors = @($issues | Where-Object Severity -eq 'Error')
+          $warnings = @($issues | Where-Object Severity -eq 'Warning')
+          if ($errors.Count -gt 0) {
+            Write-Error "PSScriptAnalyzer found $($errors.Count) errors and $($warnings.Count) warnings."
+          }
+          Write-Output "PSScriptAnalyzer found $($errors.Count) errors and $($warnings.Count) warnings."
